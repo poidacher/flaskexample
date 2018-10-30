@@ -2,10 +2,13 @@ from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
 
-class Users(db.Model):
+
+class Exams(db.Model):
+    __tablename__ = "exams"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(225), unique=True)
-    password = db.Column(db.String(225))
-    public_id = db.Column(db.String(225))
-    admin = db.Column(db.Boolean)
-    name = db.Column(db.String(225))
+    type_exams = db.Column(db.Integer)
+    subject = db.Column(db.String(225))
+    schedule = db.Column(db.DateTime)
+    schedule = db.Column(db.String(225))
+    status = db.Column(db.Integer)
+
