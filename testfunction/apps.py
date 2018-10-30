@@ -5,27 +5,31 @@ import uuid
 from functools import wraps
 import datetime
 from flask_sqlalchemy import SQLAlchemy
+from models.users import Users
+from models.users import db
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'secretindependent'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:''@localhost/test'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+db.init_app(app)
+#db = SQLAlchemy(app)
 
-class Users(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(225), unique=True)
-    password = db.Column(db.String(225))
-    public_id = db.Column(db.String(225))
-    admin = db.Column(db.Boolean)
-    name = db.Column(db.String(225))
+#class Users(db.Model):
+#    id = db.Column(db.Integer, primary_key=True)
+#    username = db.Column(db.String(225), unique=True)
+#    password = db.Column(db.String(225))
+#    public_id = db.Column(db.String(225))
+#    admin = db.Column(db.Boolean)
+#    name = db.Column(db.String(225))
 
 
-class Todos(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer)
-    text = db.Column(db.String(225))
-    status = db.Column(db.Boolean)
+#class Todos(db.Model):
+#    id = db.Column(db.Integer, primary_key=True)
+#    user_id = db.Column(db.Integer)
+#    text = db.Column(db.String(225))
+#    status = db.Column(db.Boolean)
 
 
 
@@ -97,14 +101,17 @@ def get_one_user(current_user, public_id):
 @token_required
 def create_user(current_user):
 
-    if not current_user.admin:
+    if current_user.admin != 0:
         return jsonify({'message': 'Tidak dapat masuk menggunakan user ini'})
 
     data = request.get_json();
 
+    if 'name' not in data or 'password' not in data or 'username' not in data:
+        return jsonify({'message':'data tidak lengkap'})
+
     hashed_password = bcrypt.hashpw(data['password'].encode('utf8'), bcrypt.gensalt())
 
-    new_user = Users(public_id=str(uuid.uuid4()), name=data['name'],  password= hashed_password, admin= False)
+    new_user = Users(username=data['username'] ,public_id=str(uuid.uuid4()), name=data['name'],  password= hashed_password, admin= False)
     db.session.add(new_user);
     db.session.commit();
 
