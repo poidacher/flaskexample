@@ -1,36 +1,23 @@
-from flask import Flask, request, jsonify, make_response
+from flask import Blueprint, request, jsonify, make_response
 import jwt
 import bcrypt
 import uuid
 from functools import wraps
 import datetime
-from flask_sqlalchemy import SQLAlchemy
-from models.users import Users
-from models.users import db
+# from models.users import Users
+from api.unitmodeling import Users
+# from models.users import db
+from api import db
+# from utils.tokenization import token_required
 
 
-app = Flask(__name__)
-app.config['SECRET_KEY'] = 'secretindependent'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:''@localhost/test'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db.init_app(app)
-#db = SQLAlchemy(app)
-
-#class Users(db.Model):
-#    id = db.Column(db.Integer, primary_key=True)
-#    username = db.Column(db.String(225), unique=True)
-#    password = db.Column(db.String(225))
-#    public_id = db.Column(db.String(225))
-#    admin = db.Column(db.Boolean)
-#    name = db.Column(db.String(225))
-
-
-#class Todos(db.Model):
-#    id = db.Column(db.Integer, primary_key=True)
-#    user_id = db.Column(db.Integer)
-#    text = db.Column(db.String(225))
-#    status = db.Column(db.Boolean)
-
+# poi_user = Blueprint(name='api_v1p0', import_name=__name__, url_prefix="/api/v1.0", template_folder='templates')
+poi_user = Blueprint(name='api_v1p0', import_name=__name__)
+secrets = 'secretindependent'
+# app.config['SECRET_KEY'] = 'secretindependent'
+# poi_user.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:''@localhost/test'
+# poi_user.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+#db.init_app(app)
 
 
 def token_required(f):
@@ -45,7 +32,7 @@ def token_required(f):
             return jsonify({'message' : 'Token is missing!'}), 401
 
         try:
-            data = jwt.decode(token, app.config['SECRET_KEY'])
+            data = jwt.decode(token, secrets)
             current_user = Users.query.filter_by(public_id=data['public_id']).first()
         except:
             return jsonify({'message' : 'Token is invalid!'}), 401
@@ -55,7 +42,7 @@ def token_required(f):
     return decorated
 
 
-@app.route('/user', methods=['GET'])
+@poi_user.route('/user', methods=['GET'])
 @token_required
 def get_all_user(current_user):
     if not current_user.admin:
@@ -76,7 +63,7 @@ def get_all_user(current_user):
     return jsonify({'users': output})
 
 
-@app.route('/user/<public_id>', methods=['GET'])
+@poi_user.route('/user/<public_id>', methods=['GET'])
 @token_required
 def get_one_user(current_user, public_id):
 
@@ -97,7 +84,7 @@ def get_one_user(current_user, public_id):
     return jsonify({'user': user_data})
 
 
-@app.route('/user', methods=['POST'])
+@poi_user.route('/user', methods=['POST'])
 @token_required
 def create_user(current_user):
 
@@ -111,14 +98,14 @@ def create_user(current_user):
 
     hashed_password = bcrypt.hashpw(data['password'].encode('utf8'), bcrypt.gensalt())
 
-    new_user = Users(username=data['username'] ,public_id=str(uuid.uuid4()), name=data['name'],  password= hashed_password, admin= False)
-    db.session.add(new_user);
-    db.session.commit();
+    new_user = Users(username=data['username'], public_id=str(uuid.uuid4()), name=data['name'],  password= hashed_password, admin= False)
+    db.session.add(new_user)
+    db.session.commit()
 
     return jsonify({'message': 'user baru telah ditambahkan'})
 
 
-@app.route('/user/<public_id>', methods=['PUT'])
+@poi_user.route('/user/<public_id>', methods=['PUT'])
 @token_required
 def promote_user(current_user, public_id):
 
@@ -136,7 +123,7 @@ def promote_user(current_user, public_id):
     return jsonify({'message': 'user sudah diupdate menjadi admin'})
 
 
-@app.route('/user/<public_id>', methods=['DELETE'])
+@poi_user.route('/user/<public_id>', methods=['DELETE'])
 @token_required
 def delete_user(current_user, public_id):
 
@@ -154,7 +141,7 @@ def delete_user(current_user, public_id):
     return jsonify({'message' : 'user telah dihapus'})
 
 
-@app.route('/login', methods=['POST'])
+@poi_user.route('/login', methods=['POST'])
 def login():
     auth = request.authorization
 
@@ -167,12 +154,11 @@ def login():
         return make_response('tidak dapat diverivikasi 2', 401,  {'WWW-Authenticate' : 'Basic realm="Login required!"'})
 
     if bcrypt.checkpw(auth.password.encode('utf8'), user.password.encode('utf8')):
-        token = jwt.encode({'public_id': user.public_id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, app.config['SECRET_KEY'])
+        token = jwt.encode({'public_id': user.public_id, 'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)}, secrets)
 
         return jsonify({'token': token.decode('UTF-8')})
 
     return make_response('tidak dapat diverifikasi 3', 401, {'WWW-Authenticate': 'Basic realm="Login required!"'})
 
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
